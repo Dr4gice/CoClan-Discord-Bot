@@ -1,6 +1,6 @@
 import random
 import discord
-from filters import sinner
+from functions.filters import sinner
 from discord import app_commands
 from discord.ext import commands
 
@@ -17,14 +17,14 @@ class Casino(commands.Cog):
             return
 
         if num1 is not None and num2 is not None:
-            number = random.randint(int(num1), int(num2))
-            await interaction.response.send_message(f"**{interaction.user.name}** rolled **{number}** ({num1}-{num2})")
+            NUMBER = random.randint(int(num1), int(num2))
+            await interaction.response.send_message(f"**{interaction.user.name}** rolled **{NUMBER}** ({num1}-{num2})")
         elif num1 is not None or num2 is not None:
-            number = random.randint(1, int(num1) if num1 is not None else int(num2))
-            await interaction.response.send_message(f"**{interaction.user.name}** rolled **{number}** ({1}-{num1 if num1 is not None else num2})")
+            NUMBER = random.randint(1, int(num1) if num1 is not None else int(num2))
+            await interaction.response.send_message(f"**{interaction.user.name}** rolled **{NUMBER}** ({1}-{num1 if num1 is not None else num2})")
         else:
-            number = random.randint(1,100)
-            await interaction.response.send_message(f"**{interaction.user.name}** rolled **{number}** ({1}-{100})")
+            NUMBER = random.randint(1,100)
+            await interaction.response.send_message(f"**{interaction.user.name}** rolled **{NUMBER}** ({1}-{100})")
     
 
     @app_commands.command(name="coinflip", description="Flip a coin")
@@ -33,8 +33,8 @@ class Casino(commands.Cog):
         if sinner(interaction.user.id):
             return
 
-        result = random.choice(["Heads", "Tails"])
-        await interaction.response.send_message(result)
+        RESULT = random.choice(["Heads", "Tails"])
+        await interaction.response.send_message(RESULT)
 
 
     @app_commands.command(name="pick", description="Picks one of the given options")
@@ -44,12 +44,12 @@ class Casino(commands.Cog):
         if sinner(interaction.user.id):
             return
 
-        options = [option1, option2, option3, option4, option5]
-        numOptions = sum(option is not None for option in options)
+        OPTIONS = [option1, option2, option3, option4, option5]
+        NUMBER_OPTIONS = sum(option is not None for option in OPTIONS)
 
-        if numOptions > 0:
-            number = random.randint(1, numOptions)
-            selectedOption = options[number - 1]
+        if NUMBER_OPTIONS > 0:
+            NUMBER = random.randint(1, NUMBER_OPTIONS)
+            selectedOption = OPTIONS[NUMBER - 1]
             await interaction.response.send_message(selectedOption)
 
 
