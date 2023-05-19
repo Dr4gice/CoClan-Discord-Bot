@@ -1,20 +1,11 @@
-import sys, os
 from xmlrpc.client import boolean
-sys.dont_write_bytecode = True
 import pymongo
-import operator
-import random
-import colorama, cursor, ctypes
-import discord, asyncio
+import discord
 from functions.filters import sinner
-from datetime import datetime, timedelta
-from time import gmtime, strftime, strptime, time
-from millify import millify
-from logging import exception
+from functions.reputation_functions import sumReputation, subtractReputation, ranksReputation
+from time import time
 from discord import app_commands
-from discord.ext import commands, tasks
-from colorama.initialise import init
-from colorama import init, Fore, Back, Style, Cursor
+from discord.ext import commands
 from os import getenv
 from dotenv import load_dotenv
 
@@ -68,7 +59,7 @@ class Reputation(commands.Cog):
 
 
     @REPUTATION_GROUP.command(name="remaining", description="View your daily reputation limit left")
-    async def repremaining(self, interaction: discord.Interaction):
+    async def remaining_reputation(self, interaction: discord.Interaction):
         if sinner(interaction.user.id):
             return
         
@@ -89,8 +80,115 @@ class Reputation(commands.Cog):
 
 
 
+    @REPUTATION_GROUP.command(name="add", description="Add reputation to members")
+    @app_commands.checks.has_any_role(getenv("AUCTIONEER"), getenv("TRIAL_AUCTIONEER"))
+    @app_commands.describe(member1="first member to give reputation", member2="second member to give reputation", amount="amount of reputation to be given")
+    async def add_reputation(self, interaction: discord.Interaction, member1: discord.Member, member2: discord.Member, amount: int):
+        if sinner(interaction.user.id):
+            return
+        
+        GUILD = self.bot.get_guild(getenv("GUILD"))
+        REPUTATION_CHANNEL = self.bot.get_channel(getenv("REPUTATION_CHANNEL"))
+
+        if interaction.channel.id == REPUTATION_CHANNEL.id:
+            DOCUMENT_PERMANENT_1 = REP_PERMA_COLLECTION.find_one({"id": member1.id})
+            DOCUMENT_TEMPORAL_1 = REP_TEMP_COLLECTION.find_one({"id": member1.id})
+            DOCUMENT_PERMANENT_2 = REP_PERMA_COLLECTION.find_one({"id": member2.id})
+            DOCUMENT_TEMPORAL_2 = REP_TEMP_COLLECTION.find_one({"id": member2.id})
+
+            if DOCUMENT_PERMANENT_1 is not None:
+                if DOCUMENT_TEMPORAL_1 is not None:
+                    sumReputation(member1.id, int(amount))
+                else:
+                    DOCUMENT_TEMPORAL_1.insert_one({
+                        "id": member1.id,
+                        "reputation": 0
+                    })
+                    sumReputation(member1.id, int(amount))
+            else:
+                DOCUMENT_PERMANENT_1.insert_one({
+                    "id": member1.id,
+                    "reputation": 0
+                })
+                DOCUMENT_TEMPORAL_1.insert_one({
+                    "id": member1.id,
+                    "reputation": 0
+                })
+                sumReputation(member1.id, int(amount))
+
+            if DOCUMENT_PERMANENT_2 is not None:
+                if DOCUMENT_TEMPORAL_2 is not None:
+                    sumReputation(member2.id, int(amount))
+                else:
+                    DOCUMENT_TEMPORAL_2.insert_one({
+                        "id": member2.id,
+                        "reputation": 0
+                    })
+                    sumReputation(member2.id, int(amount))
+            else:
+                DOCUMENT_PERMANENT_2.insert_one({
+                    "id": member2.id,
+                    "reputation": 0
+                })
+                DOCUMENT_TEMPORAL_2.insert_one({
+                    "id": member2.id,
+                    "reputation": 0
+                })
+                sumReputation(member2.id, int(amount))
+
+            await interaction.response.send_message(f"**{amount}** Rep added to {member1.mention} & {member2.mention}")
+        
+        ranksReputation(interaction, member1, GUILD)
+        ranksReputation(interaction, member2, GUILD)
+
+    @add_reputation.error
+    async def add_reputation_error(self, interaction: discord.Interaction, error):
+        if isinstance(error, app_commands.MissingAnyRole):
+            embed = discord.Embed(description="You don't have permissions to run this command.", color=0xd42c54)
+            await interaction.response.send_message(embed=embed)
 
 
+    @REPUTATION_GROUP.command(name="remove", description="Remove reputation to members")
+    @app_commands.checks.has_any_role(getenv("AUCTIONEER"), getenv("TRIAL_AUCTIONEER"))
+    @app_commands.describe(member="member to remove reputation", amount="amount of reputation to be removed")
+    async def remove_reputation(self, interaction: discord.Interaction, member: discord.Member, amount: int):
+        if sinner(interaction.user.id):
+            return
+
+        GUILD = self.bot.get_guild(getenv("GUILD"))
+        REPUTATION_CHANNEL = self.bot.get_channel(getenv("REPUTATION_CHANNEL"))
+
+        if interaction.channel.id == REPUTATION_CHANNEL.id:
+            DOCUMENT_PERMANENT = REP_PERMA_COLLECTION.find_one({"id": member.id})
+            DOCUMENT_TEMPORAL = REP_TEMP_COLLECTION.find_one({"id": member.id})
+
+            if DOCUMENT_PERMANENT is not None:
+                if DOCUMENT_TEMPORAL is not None:
+                    subtractReputation(member.id, int(amount))
+                else:
+                    DOCUMENT_TEMPORAL.insert_one({
+                        "id": member.id,
+                        "reputation": 0
+                    })
+                    subtractReputation(member.id, int(amount))
+            else:
+                DOCUMENT_PERMANENT.insert_one({
+                    "id": member.id,
+                    "reputation": 0
+                })
+                DOCUMENT_TEMPORAL.insert_one({
+                    "id": member.id,
+                    "reputation": 0
+                })
+                subtractReputation(member.id, int(amount))
+
+            await interaction.response.send_message(f"**{amount}** Rep removed from {member.mention}")
+
+    @add_reputation.error
+    async def remove_reputation_error(self, interaction: discord.Interaction, error):
+        if isinstance(error, app_commands.MissingAnyRole):
+            embed = discord.Embed(description="You don't have permissions to run this command.", color=0xd42c54)
+            await interaction.response.send_message(embed=embed)
 
 
 async def setup(bot):

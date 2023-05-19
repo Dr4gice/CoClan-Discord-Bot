@@ -53,9 +53,8 @@ async def on_ready():
 @bot.command(name="sync")
 @commands.is_owner()
 async def syncTree(ctx):
-    if ctx.author.id == getenv("ADMIN"):
-        await tree.sync()
-        ctx.send("Done!")
+    await tree.sync()
+    ctx.send("Done!")
 
 @tree.command(name="reload")
 @app_commands.checks.has_any_role(948702864233074688)
